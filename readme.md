@@ -1,0 +1,3 @@
+# Loaded.js
+
+Loaded.js contains functions to create, add, remove, and install local JavaScript dependencies before your application fully loads. It makes sure to delay the animation frame of the page until all dependencies are loaded into memory. Include this file in your scripts and you can include files in one of two ways; Use `addDeps()` to add local files to your line-up (Not fully functional yet) Or include the files that use `addDeps()` within them as script tags. You must put `<script>installDeps();</script>` at the end of the script inclusions but before the `<body>` tag.

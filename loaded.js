@@ -32,6 +32,8 @@ const __DEPENDENCIES__ = [
   }
 ]
 
+let __INSTALLED__ = false
+
 /* ------------------------------------ */
 
 
@@ -91,6 +93,9 @@ export function rmDeps(...dep_names) {
  * Differentiates between Node and Browser environments, executing the dependencies accordingly
  */
 export function installDeps() {
+  if(__INSTALLED__) return
+  __INSTALLED__ = true
+
   const loadList = []
   const isBrowser = typeof window !== "undefined" && typeof document !== "undefined"
   //Loop through the dependencies and assign the different types

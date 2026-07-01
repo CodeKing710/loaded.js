@@ -14,80 +14,115 @@
  */
 
 /* ------------------------------------ */
-/** PRIVATE FUNCTION FOR PREDEF FUNCS */
+/** PRIVATE FUNCTION AND VARS */
+const safeCtx = typeof globalThis !== "undefined" ? globalThis : this
+
 function runMain(){
-    if(typeof MAIN == "undefined") {
-        //Dont run
-        console.warn("MAIN NOT DEFINED");
-    } else {
-        MAIN();
-    }
+  if(typeof safeCtx.MAIN !== "function") {
+    console.warn("MAIN NOT DEFINED")
+  } else {
+    safeCtx.MAIN()
+  }
 }
+
+const __DEPENDENCIES__ = [
+  {
+    func: runMain,
+    onload: false
+  }
+]
+
 /* ------------------------------------ */
 
-let __DEPENDENCIES__ = [
-    {
-        func: runMain,
-        onload: false
-    }
-];
 
 //Dependency mutators
-function addDeps(onload, ...dep_names) {
-    if(typeof onload !== "boolean") {
-        //Use onload backup as false and grab the odd one out
-        __DEPENDENCIES__.push({func: onload, onload: false});
-        for(let i = 0; i < dep_names.length; i++) {
-            let dep_name = dep_names[i];
-            if(typeof dep_name == "function") {
-                __DEPENDENCIES__.push({func: dep_name, onload: false});
-            } else {
-                console.error("DEPENDENCY ",dep_name, " NOT FOUND");
-            }
-        }
-    } else {
-        for(let i = 0; i < dep_names.length; i++) {
-            let dep_name = dep_names[i];
-            if(typeof dep_name == "function") {
-                __DEPENDENCIES__.push({func: dep_name, onload: onload});
-            } else {
-                console.error("DEPENDENCY ",dep_name, " NOT FOUND");
-            }
-        }
-    }
-    
-}
-function rmDeps(...dep_names) {
-    //Loop through each index try and find proper dep index
-    for(let i = 0; i < __DEPENDENCIES__.length; i++) {
-        for(let j = 0; j < dep_names.length; j++) {
-            if(__DEPENDENCIES__[i].func == dep_names[j]) {
-                //The dependency exists splice the original array
-                __DEPENDENCIES__.splice(i,i);
-            }
-        }
-    }
+/**
+ * 
+ * @param {Function} func - Callback to execute
+ * @param {boolean} [onload=false] - Defines execution delay for DOM
+ * @returns {Object} structured dependency block 
+ */
+export function createDep(func, onload = false) {
+  if(typeof func !== "function") {
+    console.error("DEPENDENCY ",func, " NOT FOUND")
+    return null
+  }
+  return {
+    func: func,
+    onload: !!onload
+  }
 }
 
-// Installation script
-//Runs before DOM is accessible, DOM may or may not be ready
-//Use "true" for run at pageload
-function installDeps() {
-    let loadList = [];
-    //Loop through the dependencies and assign the different types
-    for(let i = 0; i < __DEPENDENCIES__.length; i++) {
-        if(__DEPENDENCIES__[i].onload) {
-            //Assign to the list to be looped through later
-            loadList.push(__DEPENDENCIES__[i].func);
-        } else {
-            //Run right away since it doesn't rely on pageload
-            __DEPENDENCIES__[i].func.call(window);
-        }
+/**
+ * 
+ * @param  {...(Function|Object)} deps - List of functions or dependency objects to add to the dependency list 
+ */
+export function addDeps(...deps) {
+  for(let i = 0; i < deps.length; i++) {
+    const item = deps[i]
+    if (!item) continue
+
+    if (typeof item === "function") {
+      __DEPENDENCIES__.push(createDep(item))
+    } else if (typeof item === "object" && item.func) {
+      __DEPENDENCIES__.push(item)
+    } else {
+      console.error("Invalid dependency: ", item)
     }
-    //Set window.onload to the function loadList loop
-    window.onload = function() {
+  }
+}
+
+/**
+ * 
+ * @param  {...Function} dep_names - List of function names to remove from the dependency list
+ */
+export function rmDeps(...dep_names) {
+  //Loop through the dependency list to see if the names to remove are in it, if so remove them
+  for(let i = __DEPENDENCIES__.length - 1; i >= 0; i--) {
+    const dep = __DEPENDENCIES__[i]
+    if(dep_names.includes(dep.func)) {
+      __DEPENDENCIES__.splice(i, 1)
+    }
+  }
+}
+
+/**
+ * Insatlls and executes the dependencies in the __DEPENDENCIES__ list
+ * Differentiates between Node and Browser environments, executing the dependencies accordingly
+ */
+export function installDeps() {
+  const loadList = []
+  const isBrowser = typeof window !== "undefined" && typeof document !== "undefined"
+  //Loop through the dependencies and assign the different types
+  for(let i = 0; i < __DEPENDENCIES__.length; i++) {
+    const dep = __DEPENDENCIES__[i]
+    if(dep.onload) {
+      //Assign to the list to be looped through later
+      loadList.push(dep.func);
+    } else {
+      //Run right away since it doesn't rely on pageload
+      dep.func.call(safeCtx);
+    }
+  }
+
+  if(loadList.length === 0) return
+
+  if(isBrowser) {
+    if(document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function() {
         for(let i = 0; i < loadList.length; i++) {
-            loadList[i].call(window);
+          loadList[i].call(safeCtx);
         }
+      })
+    } else {
+      for(let i = 0; i < loadList.length; i++) {
+        loadList[i].call(safeCtx);
+      }
     }
+  } else {
+    //If not in a browser, just run the functions
+    for(let i = 0; i < loadList.length; i++) {
+      loadList[i].call(safeCtx);
+    }
+  }
 }

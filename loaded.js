@@ -14,14 +14,26 @@
  */
 
 /* ------------------------------------ */
+
+// Attempt to find a MAIN function
+let MAIN;
+try {
+  MAIN = await import('/js/main.js')
+} catch (e) {
+  try {
+    MAIN = await import('./main.js')
+  } catch (e) {
+    console.warn('MAIN not defined, skipping execution attempt')
+  }
+}
+
 /** PRIVATE FUNCTION AND VARS */
+
 const safeCtx = typeof globalThis !== "undefined" ? globalThis : this
 
 function runMain(){
-  if(typeof safeCtx.MAIN !== "function") {
-    console.warn("MAIN NOT DEFINED")
-  } else {
-    safeCtx.MAIN()
+  if(typeof MAIN === 'function') {
+    MAIN()
   }
 }
 

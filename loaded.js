@@ -33,7 +33,7 @@ const safeCtx = typeof globalThis !== "undefined" ? globalThis : this
 
 function runMain(){
   if(typeof MAIN === 'function') {
-    MAIN()
+    MAIN.MAIN()
   }
 }
 
